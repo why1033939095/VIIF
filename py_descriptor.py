@@ -48,6 +48,7 @@ def py_descriptor(img, keypoints):
 
     angles = np.zeros(img.shape)
     # 计算梯度方向
+    t0 = time.time()
     for i in range(M):
         for j in range(N):
             # 令所有角度值都为正值 0-2*pi
@@ -64,6 +65,27 @@ def py_descriptor(img, keypoints):
                 angles[i][j] = np.arctan(gradient_y[i][j] / gradient_x[i][j])
             elif gradient_x[i][j] > 0 and gradient_y[i][j]<0:
                 angles[i][j] = np.arctan(gradient_y[i][j] / gradient_x[i][j]) + 2*np.pi
+    t1 = time.time()
+    print('循环花费时间：', t1-t0)
+    angle1 = np.zeros_like(img)
+    ang_x0 = gradient_x==0
+    ang_y0 = gradient_y==0
+    ang_yp = gradient_y>0
+    angle1[np.logical_and(ang_yp,ang_x0)] = np.pi*3/2
+    angle1[np.logical_and(~ang_yp,ang_x0)] = np.pi/2
+    angle1[np.logical_and(ang_y0,ang_x0)] = np.nan
+    ang_xn = gradient_x<0
+    angle1[ang_xn] = np.arctan(gradient_y[ang_xn]/gradient_x[ang_xn])+np.pi
+    ang_xp = gradient_x > 0
+    ang_yp = gradient_y >= 0
+    ang_ypxp = np.logical_and(ang_yp, ang_xp)
+    angle1[ang_ypxp] = np.arctan(gradient_y[ang_ypxp]/gradient_x[ang_ypxp])
+    ang_ynxp = np.logical_and(~ang_yp, ang_xp)
+    angle1[ang_ynxp] = np.arctan(gradient_y[ang_ynxp]/gradient_x[ang_ynxp])+2*np.pi
+    t2 = time.time()
+    print('矩阵运算花费时间：', t2-t1)
+
+    print(np.any(angle1[~np.isnan(angle1)]==angles[~np.isnan(angles)]))
 
     # angles = readTxt('.\image\\angles.txt', splt='\t', end='\n', start=0)
     # keypoints是4行的矩阵，1.x坐标 2.y坐标 3.比例 4.角度
