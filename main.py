@@ -39,19 +39,19 @@ if __name__ == '__main__':
     # IRgray, VIgray, IRrgb, VIrgb = py_readImage()
     file_path = r'C:\Users\WHY\Desktop\公司文件\Image-registration-master\Image-registration-master\CAO-C2F\Example_Images'
 
-    I1rgb = np.array(plt.imread(file_path+'\I2.jpg'))
+    I1rgb = np.array(plt.imread(file_path+'\I1.jpg'))
 
         # 获取灰度图，用cv2的函数直接获得，转化为浮点类型
         # IR_gray = cv2.imread(file_path, 0)
-    I1gray = Image.open(file_path+'\I2.jpg')
+    I1gray = Image.open(file_path+'\I1.jpg')
     I1gray = np.array(I1gray.convert('L'))
     # I1gray = np.array(Image.open('./image/I1_m.png'))
 
 
 
-    I2rgb = np.array(plt.imread(file_path+'\V2.jpg'))
+    I2rgb = np.array(plt.imread(file_path+'\V1.jpg'))
         # VI_gray = cv2.imread(file_path, 0)
-    I2gray = Image.open(file_path+'\V2.jpg')
+    I2gray = Image.open(file_path+'\V1.jpg')
     I2gray = np.array(I2gray.convert('L'))
 
 

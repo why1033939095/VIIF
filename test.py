@@ -54,7 +54,7 @@ umax1 = np.max(un)
 
 Imosaic[np.max((r1,c1)):np.max((r1,c1))+r2,np.max((r1,c1)):np.max((r1,c1))+c2] = I2
 
-flag2 =  np.zeros_like(Imosaic)
+flag2 = np.zeros_like(Imosaic)
 flag2[np.max((r1,c1)):np.max((r1,c1))+r2,np.max((r1,c1)):np.max((r1,c1))+c2] = np.full((np.max((r1,c1))+r2-np.max((r1,c1)),np.max((r1,c1))+c2-np.max((r1,c1))), 1)
 
 # 进行二维线性插值

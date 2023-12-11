@@ -4,7 +4,7 @@ import copy
 import time
 from readTxt import readTxt
 
-# sift算法                                 
+# sift算法
 def py_descriptor(img, keypoints):
     NBP = 4
     NBO = 8
@@ -48,46 +48,24 @@ def py_descriptor(img, keypoints):
 
     angles = np.zeros(img.shape)
     # 计算梯度方向
-    t0 = time.time()
-    for i in range(M):
-        for j in range(N):
-            # 令所有角度值都为正值 0-2*pi
-            if np.isinf(gradient_y[i][j]/gradient_x[i][j]):
-                if gradient_y[i][j]>0:
-                    angles[i][j] = np.pi*3/2
-                else:
-                    angles[i][j] = np.pi/2
-            elif np.isnan(gradient_y[i][j]/gradient_x[i][j]):
-                angles[i][j]=np.nan
-            elif gradient_x[i][j] < 0:
-                angles[i][j] = np.arctan(gradient_y[i][j]/gradient_x[i][j]) + np.pi
-            elif gradient_x[i][j] > 0 and gradient_y[i][j]>=0:
-                angles[i][j] = np.arctan(gradient_y[i][j] / gradient_x[i][j])
-            elif gradient_x[i][j] > 0 and gradient_y[i][j]<0:
-                angles[i][j] = np.arctan(gradient_y[i][j] / gradient_x[i][j]) + 2*np.pi
-    t1 = time.time()
-    print('循环花费时间：', t1-t0)
-    angle1 = np.zeros_like(img)
+
+    angles = np.zeros_like(img)
     ang_x0 = gradient_x==0
     ang_y0 = gradient_y==0
     ang_yp = gradient_y>0
-    angle1[np.logical_and(ang_yp,ang_x0)] = np.pi*3/2
-    angle1[np.logical_and(~ang_yp,ang_x0)] = np.pi/2
-    angle1[np.logical_and(ang_y0,ang_x0)] = np.nan
+    angles[np.logical_and(ang_yp,ang_x0)] = np.pi*3/2
+    angles[np.logical_and(~ang_yp,ang_x0)] = np.pi/2
+    angles[np.logical_and(ang_y0,ang_x0)] = np.nan
     ang_xn = gradient_x<0
-    angle1[ang_xn] = np.arctan(gradient_y[ang_xn]/gradient_x[ang_xn])+np.pi
+    angles[ang_xn] = np.arctan(gradient_y[ang_xn]/gradient_x[ang_xn])+np.pi
     ang_xp = gradient_x > 0
     ang_yp = gradient_y >= 0
     ang_ypxp = np.logical_and(ang_yp, ang_xp)
-    angle1[ang_ypxp] = np.arctan(gradient_y[ang_ypxp]/gradient_x[ang_ypxp])
+    angles[ang_ypxp] = np.arctan(gradient_y[ang_ypxp]/gradient_x[ang_ypxp])
     ang_ynxp = np.logical_and(~ang_yp, ang_xp)
-    angle1[ang_ynxp] = np.arctan(gradient_y[ang_ynxp]/gradient_x[ang_ynxp])+2*np.pi
-    t2 = time.time()
-    print('矩阵运算花费时间：', t2-t1)
+    angles[ang_ynxp] = np.arctan(gradient_y[ang_ynxp]/gradient_x[ang_ynxp])+2*np.pi
 
-    print(np.any(angle1[~np.isnan(angle1)]==angles[~np.isnan(angles)]))
 
-    # angles = readTxt('.\image\\angles.txt', splt='\t', end='\n', start=0)
     # keypoints是4行的矩阵，1.x坐标 2.y坐标 3.比例 4.角度
     x = keypoints[0]
     y = keypoints[1]
@@ -103,10 +81,13 @@ def py_descriptor(img, keypoints):
 
     t0 = time.time()
     print('begin:'+str(t0))
+    t_xunhuan = 0
+    t_buxunhuan = 0
     for p in range(key_num):
+        if p==1000:
+            print('1000个特征点计算循环耗时：',t_xunhuan)
+            print('1000个特征点计算非循环耗时：', t_buxunhuan)
         # 梯度平方和再开根
-        t = time.time()
-        print('first:'+str(t-t0))
         magnitude = copy.deepcopy(magnitudes)
         sp = s[p]   # scale=36
         xp = x[p]
@@ -124,16 +105,6 @@ def py_descriptor(img, keypoints):
         pp = magnitudes[(np.max([-W, -yp])+yp).astype(int) : (np.min([W, M-yp-1])+yp+1).astype(int), \
              (np.max([-W, -xp])+xp).astype(int):(np.min([W, N-xp-1])+xp+1).astype(int)]
 
-        # if pp.size == 0:
-        #     print(magnitudes)
-        #     print(magnitudes.shape)
-        #     print('w:',W, 'yp:',yp,'M:', M,'xp:',xp,'N:',N,'p:',p)
-        #     print(keypoints.shape)
-        #     print((np.max([-W, -yp])+yp).astype(int) , (np.min([W, M-yp-1])+yp).astype(int),(np.max([-W, -xp])+xp).astype(int),(np.min([W, N-xp-1])+xp).astype(int))
-        #     #  [0.75 1.   1.   ... 0.   0.   0.  ]]
-        #
-        #     # 0.0 0.06733539931561396 0.0 0.15288855119425324
-        #     print(pp)
 
         pp = pp/np.max(pp)
         # 按列升序排序，全部拉通来排
@@ -158,83 +129,63 @@ def py_descriptor(img, keypoints):
         # 网格x正弦加余弦，ss为比例/2，即18
         nx = (costh0*dx+sinth0*dy)/ss
         ny = (-sinth0*dx+costh0*dy)/ss
-        tempi=0
-        temp = np.array([])
-        xv = 0
-        t = time.time()
-        print('second:'+str(t-t0))
+
+
+
+        ddy = np.ravel(yp+dy.T).astype(int)
+        ddx = np.ravel(xp+dx.T).astype(int)
+        mag1 = magnitude[ddy, ddx]
+        angle1 = angles[ddy, ddx]
+        angle1 = np.mod(angle1-theta[p], np.pi)
+        nt1 = NBO*angle1/np.pi
+
+        nx1 = np.ravel(nx.T)
+        ny1 = np.ravel(ny.T)
+        binx1 = np.floor(nx1 - 0.5)
+        biny1 = np.floor(ny1 - 0.5)
+        bint1 = np.floor(nt1)
+
+        rbinx1 = nx1 - binx1 - 0.5
+        rbiny1 = ny1 - biny1 - 0.5
+        rbint1 = nt1 - bint1
+
+
         for kk in range(np.size(dx)):
-            print('kk=',kk)
-            t = time.time()
-            print('third:' + str(t - t0))
-            # 这个地方是M-yp-1过来的，所以不应该再加1
-            mag = magnitude[int(yp+dy[int(kk%dy.shape[0]),int(kk//dy.shape[0])])][int(xp+dx[int(kk%dx.shape[0]),int(kk//dx.shape[0])])]
-            # angles是梯度角，theta是轮廓角
-            angle = angles[int(yp+dy[int(kk%dy.shape[0]),int(kk//dy.shape[0])])][int(xp+dx[int(kk%dx.shape[0]),int(kk//dx.shape[0])])]
-            # if kk==1435:
-            #     print(int(yp+dy[int(kk%dy.shape[0]),int(kk//dy.shape[0])]))
-            #     print(int(xp+dx[int(kk%dx.shape[0]),int(kk//dx.shape[0])]))
-            #     print('stop')
-            # 求出夹角
-            angle = np.mod(angle-theta[p], np.pi)
-            #三次插值 NBO=8
-            nt = NBO*angle/np.pi
-            # 向下取整，将连续数据离散化
-            binx = np.floor(nx[int(kk%nx.shape[0]),int(kk//nx.shape[0])]-0.5)
-            biny = np.floor(ny[int(kk%ny.shape[0]),int(kk//ny.shape[0])]-0.5)
-            bint = np.floor(nt)
-            # 与n.5的差值
-            rbinx = nx[int(kk%nx.shape[0]),int(kk//nx.shape[0])]-(binx+0.5)
-            rbiny = ny[int(kk%ny.shape[0]),int(kk//ny.shape[0])]-(biny+0.5)
-            # 把nt的小数部分取出来
-            rbint = nt-bint
-            adf=0
 
-            t = time.time()
-            print('4th:' + str(t - t0))
+            mag = mag1[kk]
+            angle = angle1[kk]
+            nt = nt1[kk]
 
-            for dbinx in range(2):
-                for dbiny in range(2):
-                    for dbint in range(2):
-                        # NBP/2=2
-                        t = time.time()
-                        print('4.5th:' + str(t - t0))
-                        if binx+dbinx>=-(NBP/2) and binx+dbinx<(NBP/2) and \
-                            biny+dbiny>=-(NBP/2) and biny+dbiny<(NBP/2) and not np.isnan(bint):
-                            # （e的（x平方＋y平方））/8*x梯度平方和y梯度平方和*高斯*三个绝对值，获得主方向的权重
+            binx = binx1[kk]
+            biny = biny1[kk]
+            bint = bint1[kk]
 
-                            t = time.time()
-                            print('5th:' + str(t - t0))
-                            weight = wincoef[int(binx+dbinx+NBP/2)][int(biny+dbiny+NBP/2)]*mag*np.abs(1-dbinx-rbinx)\
-                                *np.abs(1-dbiny-rbiny)*np.abs(1-dbint-rbint)
-
-                            # if p==0 and (binx+dbinx+NBP/2)==0 and (biny+dbiny+NBP/2)==0 and np.mod(bint+dbint,NBO)==0:
-                            #     ddd = descriptor[int(binx+dbinx+NBP/2)][int(biny+dbiny+NBP/2)]\
-                            #     [int(np.mod(bint+dbint,NBO))]+weight
-                            #     temp = np.append(temp,ddd)
-                            #     tempi = tempi+1
-                            #     print(tempi)
-                            #     print('kk:',kk)
-                            #     if tempi==39:
-                            #         print(wincoef[int(binx+dbinx+NBP/2)][int(biny+dbiny+NBP/2)])
-                            #         print(binx, biny, bint)
-                            #         print(rbinx,rbiny,rbint)
+            rbinx = rbinx1[kk]
+            rbiny = rbiny1[kk]
+            rbint = rbint1[kk]
 
 
-                            t = time.time()
-                            print('6th:' + str(t - t0))
-                            descriptor[int(binx+dbinx+NBP/2)][int(biny+dbiny+NBP/2)][int(np.mod(bint+dbint,NBO))]=\
-                            descriptor[int(binx+dbinx+NBP/2)][int(biny+dbiny+NBP/2)][int(np.mod(bint+dbint,NBO))]+weight
+            if not np.isnan(bint):
+                dbinx = np.array([0, 0, 1, 1])
+                dbiny = np.array([0, 1, 0, 1])
+                bdbinx = dbinx + binx + NBP / 2
+                bdbiny = dbiny + biny + NBP / 2
+                flag_x = np.logical_and(bdbinx >= 0, bdbinx < NBP)
+                flag_y = np.logical_and(bdbiny >= 0, bdbiny < NBP)
+                flag_xy = np.logical_and(flag_x, flag_y)
+                weight = wincoef[bdbinx[flag_xy].astype(int), bdbiny[flag_xy].astype(int)] * mag * np.abs( \
+                    1 - dbinx[flag_xy] - rbinx) * np.abs(1 - dbiny[flag_xy] - rbiny) * np.abs(1 - rbint)
 
-                            t = time.time()
-                            print('7th:' + str(t - t0))
+                descriptor[
+                    bdbinx[flag_xy].astype(int), bdbiny[flag_xy].astype(int), np.mod(bint, NBO).astype(int)] += weight
+                weight = wincoef[bdbinx[flag_xy].astype(int), bdbiny[flag_xy].astype(int)] * mag * np.abs( \
+                    1 - dbinx[flag_xy] - rbinx) * np.abs(1 - dbiny[flag_xy] - rbiny) * np.abs(rbint)
+                descriptor[bdbinx[flag_xy].astype(int), bdbiny[flag_xy].astype(int), np.mod(bint + 1, NBO).astype(
+                    int)] += weight
 
 
-            t = time.time()
-            print('8th:' + str(t - t0))
 
-        t = time.time()
-        print('9th:' + str(t - t0))
+
         descriptor = descriptor.T
         temp = np.array([])
         for ti in range(NBO):
@@ -249,4 +200,3 @@ def py_descriptor(img, keypoints):
         t = time.time()
         print('0th:' + str(t - t0))
     return descriptors
-

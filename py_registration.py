@@ -9,6 +9,7 @@ from readTxt import readTxt
 import matplotlib.pyplot as plt
 from py_resizeImage import imresize
 from PIL import Image
+import time
 
 # input:            I1, I2, 20,      maxRMSE, 0,         1,          0,           6,  1,        I2gray
 def py_registration(I1, I2, maxtheta, maxErr, iteration, zoomascend, zoomdescend, Lc, showflag, I2ori):
@@ -63,7 +64,9 @@ def py_registration(I1, I2, maxtheta, maxErr, iteration, zoomascend, zoomdescend
     key1 = np.append(key1, np.array([o1]), axis=0)
 
     # 描述子是4*4*8行，n（就是特征点的个数）列的矩阵
+
     des1 = py_descriptor(I1, key1)
+
     # 在多尺度的情况下，从图二中提取特征点，交换行和列（本来就是反的）(没反)
     # des1 = readTxt('.\image\des1.txt', splt='   ', end='\n', start=1)
     cols2 = cor2[:,0]
